@@ -7,7 +7,7 @@ package dp_project;
 
 /**
  *
- * @author jood2
+ * @author 
  */
 public class App {
     public static void main(String[] args) {
