@@ -1,28 +1,31 @@
 package dp_project;
-// saja
+//saja,
 import java.awt.Color;
 import java.awt.event.*;
+import java.util.ArrayList;
+import java.util.List;
 import javax.swing.JButton;
 
 public final class Calculator extends javax.swing.JFrame {
     
-    private static Calculator instance =null; // Singleton instance: ensures only one Calculator window exists 
+    private static Calculator instance =null;
 
     private String currentOperand;
-    private String previousOperand;
-    private String operationSymbol;   // we store only the symbol
+    private List<Expression> expressionList = new ArrayList<>(); // we saved the numbers for create CompositeOperation object
+    private List<String> operationsList = new ArrayList<>(); // we saved the operation for create CompositeOperation object
+    private String expressionText = ""; // to show the user the expression
 
     private int x, y;
 
-    private Calculator() {  // Private constructor to prevent external instantiation (Singleton pattern)
+    private Calculator() {  // Private constructor
         initComponents();
         getContentPane().setSize(400, 700);
         this.clear();
         this.addEvents();
     }
-    
-    public static Calculator getInstance(){  // Returns the single instance of Calculator (Singleton pattern)
-        if(instance== null){
+
+    public static Calculator getInstance() {
+        if (instance == null) {
             instance = new Calculator();
         }
         return instance;
@@ -63,8 +66,7 @@ public final class Calculator extends javax.swing.JFrame {
 
     public void clear() {
         this.currentOperand = "";
-        this.previousOperand = "";
-        this.operationSymbol = null;
+        expressionText = "";
         this.updateDisplay();
     }
 
@@ -73,56 +75,68 @@ public final class Calculator extends javax.swing.JFrame {
         if (number.equals(".") && this.currentOperand.contains(".")) return;
         if (this.currentOperand.equals("0") && !number.equals("0") && !number.equals(".")) this.currentOperand = "";
         this.currentOperand += number;
-        this.updateDisplay();
-    }
 
-    public void chooseOperation(String symbol) {
-        if (CalculatorFactory.create(symbol) == null) return; // unknown op
-
-        if (this.currentOperand.equals("") && !this.previousOperand.equals("")) {
-            this.operationSymbol = symbol;
-            this.updateDisplay();
-            return;
-        }
-        if (this.currentOperand.equals("")) return;
-
-        if (!this.previousOperand.equals("")) compute();
-        this.operationSymbol = symbol;
-        this.previousOperand = this.currentOperand;
-        this.currentOperand = "";
+        expressionText += number;
         updateDisplay();
     }
 
+    public void chooseOperation(String symbol) {
+          if (currentOperand.isEmpty()) return;
+
+    // add the current number for expression
+    expressionList.add(new Number(Float.parseFloat(currentOperand)));
+
+    // add the operation
+    operationsList.add(symbol);
+
+    // update the apper text 
+    expressionText += " " + symbol + " ";
+    currentOperand = "";
+    updateDisplay();
+    }
+
     public void compute() {
-        if (this.currentOperand.equals("") || this.previousOperand.equals("") || this.operationSymbol == null) return;
+         if (currentOperand.isEmpty()) return;
 
-        float curr = Float.parseFloat(this.currentOperand);
-        float prev = Float.parseFloat(this.previousOperand);
+    // add last number before the compute
+    expressionList.add(new Number(Float.parseFloat(currentOperand)));
 
-        try {
-            CalculatorOperation op = CalculatorFactory.create(this.operationSymbol);
-            if (op == null) return;
+    // create CompositeOperation object 
+    CompositeOperation comp = new CompositeOperation();
 
-            float res = op.apply(prev, curr);
-            this.currentOperand = (res - (int) res) != 0 ? Float.toString(res) : Integer.toString((int) res);
-            this.previousOperand = "";
-            this.operationSymbol = null;
-        } catch (ArithmeticException ex) {
-            clear();
-            this.currentOperand = "Error";
-        }
+    // add all numbers to CompositeOperation object
+    for (Expression exp : expressionList) {
+        comp.addNumber(exp);
+    }
+
+    // add all operations to CompositeOperation object
+    for (String op : operationsList) {
+        comp.addOperation(op);
+    }
+
+    // compute
+    float result = 0;
+    try {
+        result = comp.evaluate();
+    } catch (ArithmeticException ex) {
+        clear();
+        currentOperand = "Error";
+        updateDisplay();
+        return;
+    }
+
+    currentOperand = (result - (int) result != 0) ? Float.toString(result) : Integer.toString((int) result);
+
+    expressionList.clear();
+    operationsList.clear();
+    expressionText = currentOperand;
+    updateDisplay();
     }
 
     public void updateDisplay() {
-        String opText = "";
-        if (this.operationSymbol != null) {
-            CalculatorOperation op = CalculatorFactory.create(this.operationSymbol);
-            if (op != null) opText = op.symbol();
-        }
-        current.setText(this.currentOperand);
-        previous.setText(previousOperand + " " + opText);
+        previous.setText(expressionText);  
+        current.setText(currentOperand); 
     }
-
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
