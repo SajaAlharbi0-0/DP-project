@@ -1,5 +1,5 @@
 package dp_project;
-//saja,
+
 import java.awt.Color;
 import java.awt.event.*;
 import java.util.ArrayList;
@@ -95,43 +95,43 @@ public final class Calculator extends javax.swing.JFrame {
     updateDisplay();
     }
 
-    public void compute() {
-         if (currentOperand.isEmpty()) return;
+  public void compute() {
+    // Don’t compute if no current input
+    if (currentOperand.isEmpty()) return;
 
-    // add last number before the compute
     expressionList.add(new Number(Float.parseFloat(currentOperand)));
 
-    // create CompositeOperation object 
-    CompositeOperation comp = new CompositeOperation();
+    // Create and use the Facade (new layer that handles Composite + Factory)
+    CalculatorFacade facade = new CalculatorFacade();
 
-    // add all numbers to CompositeOperation object
-    for (Expression exp : expressionList) {
-        comp.addNumber(exp);
-    }
-
-    // add all operations to CompositeOperation object
-    for (String op : operationsList) {
-        comp.addOperation(op);
-    }
-
-    // compute
     float result = 0;
     try {
-        result = comp.evaluate();
+        // Delegate the whole computation to the Facade
+        result = facade.calculate(expressionList, operationsList);
     } catch (ArithmeticException ex) {
         clear();
         currentOperand = "Error";
         updateDisplay();
         return;
+    } catch (Exception ex) {
+        clear();
+        currentOperand = "Error";
+        updateDisplay();
+        return;
     }
+    
+    currentOperand = (result - (int) result != 0)
+            ? Float.toString(result)
+            : Integer.toString((int) result);
 
-    currentOperand = (result - (int) result != 0) ? Float.toString(result) : Integer.toString((int) result);
-
+  
     expressionList.clear();
     operationsList.clear();
     expressionText = currentOperand;
+    
     updateDisplay();
-    }
+}
+
 
     public void updateDisplay() {
         previous.setText(expressionText);  
