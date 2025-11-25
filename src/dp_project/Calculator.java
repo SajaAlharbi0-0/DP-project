@@ -1,23 +1,31 @@
 package dp_project;
-//saja,
+
 import java.awt.Color;
 import java.awt.event.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Deque;        // [Memento] 
+import java.util.ArrayDeque;  // [Memento] 
 import javax.swing.JButton;
 
 public final class Calculator extends javax.swing.JFrame {
-    
-    private static Calculator instance =null;
 
+    // Singleton
+    private static Calculator instance = null;
+
+    // Current state
     private String currentOperand;
-    private List<Expression> expressionList = new ArrayList<>(); // we saved the numbers for create CompositeOperation object
-    private List<String> operationsList = new ArrayList<>(); // we saved the operation for create CompositeOperation object
-    private String expressionText = ""; // to show the user the expression
+    private List<Expression> expressionList = new ArrayList<>(); // numbers for CompositeOperation
+    private List<String> operationsList = new ArrayList<>();     // operations for CompositeOperation
+    private String expressionText = "";                          // text shown to user
+
+    // [Memento] stack to support multi-level undo
+    private Deque<CalculatorMemento> undoStack = new ArrayDeque<>();
 
     private int x, y;
 
-    private Calculator() {  // Private constructor
+    // Private constructor (Singleton)
+    private Calculator() {
         initComponents();
         getContentPane().setSize(400, 700);
         this.clear();
@@ -30,6 +38,61 @@ public final class Calculator extends javax.swing.JFrame {
         }
         return instance;
     }
+
+    // ===================== MEMENTO  ======================
+
+    // [Memento] snapshot class (inner private class)
+    private static class CalculatorMemento {
+        private final String currentOperand;
+        private final List<Expression> expressionList;
+        private final List<String> operationsList;
+        private final String expressionText;
+
+        private CalculatorMemento(String currentOperand,
+                                  List<Expression> expressionList,
+                                  List<String> operationsList,
+                                  String expressionText) {
+            this.currentOperand = currentOperand;
+            this.expressionList = expressionList;
+            this.operationsList = operationsList;
+            this.expressionText = expressionText;
+        }
+    }
+
+    // [Memento] create snapshot of current state
+    private CalculatorMemento createMemento() {
+        return new CalculatorMemento(
+                currentOperand,
+                new ArrayList<>(expressionList),   // copy lists
+                new ArrayList<>(operationsList),
+                expressionText
+        );
+    }
+
+    // [Memento] push snapshot to history
+    private void saveStateToHistory() {
+        undoStack.push(createMemento());
+    }
+
+    // [Memento] restore from snapshot
+    private void restoreFromMemento(CalculatorMemento m) {
+        if (m == null) return;
+        this.currentOperand = m.currentOperand;
+        this.expressionList = new ArrayList<>(m.expressionList);
+        this.operationsList = new ArrayList<>(m.operationsList);
+        this.expressionText = m.expressionText;
+        updateDisplay();
+    }
+
+    // [Memento] undo last step (used by ← button)
+    private void undo() {
+        if (!undoStack.isEmpty()) {
+            CalculatorMemento m = undoStack.pop();
+            restoreFromMemento(m);
+        }
+    }
+
+    // ===================== EVENTS & LOGIC =======================
 
     public void addEvents() {
         JButton[] btns = {
@@ -65,12 +128,19 @@ public final class Calculator extends javax.swing.JFrame {
     }
 
     public void clear() {
+        // [Memento] save state before clearing
+        saveStateToHistory();
+
         this.currentOperand = "";
         expressionText = "";
         this.updateDisplay();
     }
 
     public void appendNumber(String number) {
+        // [Memento] save state before changing input
+        saveStateToHistory();
+
+        if (this.currentOperand == null) this.currentOperand = "";
         if (this.currentOperand.equals("0") && number.equals("0")) return;
         if (number.equals(".") && this.currentOperand.contains(".")) return;
         if (this.currentOperand.equals("0") && !number.equals("0") && !number.equals(".")) this.currentOperand = "";
@@ -81,61 +151,66 @@ public final class Calculator extends javax.swing.JFrame {
     }
 
     public void chooseOperation(String symbol) {
-          if (currentOperand.isEmpty()) return;
+        if (currentOperand == null) currentOperand = "";
+        if (currentOperand.isEmpty()) return;
 
-    // add the current number for expression
-    expressionList.add(new Number(Float.parseFloat(currentOperand)));
+        // [Memento] save state before adding operation
+        saveStateToHistory();
 
-    // add the operation
-    operationsList.add(symbol);
+        // add the current number for expression
+        expressionList.add(new Number(Float.parseFloat(currentOperand)));
 
-    // update the apper text 
-    expressionText += " " + symbol + " ";
-    currentOperand = "";
-    updateDisplay();
+        // add the operation
+        operationsList.add(symbol);
+
+        // update the text
+        expressionText += " " + symbol + " ";
+        currentOperand = "";
+        updateDisplay();
     }
 
     public void compute() {
-         if (currentOperand.isEmpty()) return;
+        if (currentOperand == null) currentOperand = "";
+        // Don’t compute if no current input
+        if (currentOperand.isEmpty()) return;
 
-    // add last number before the compute
-    expressionList.add(new Number(Float.parseFloat(currentOperand)));
+        // [Memento] save state before computing
+        saveStateToHistory();
 
-    // create CompositeOperation object 
-    CompositeOperation comp = new CompositeOperation();
+        expressionList.add(new Number(Float.parseFloat(currentOperand)));
 
-    // add all numbers to CompositeOperation object
-    for (Expression exp : expressionList) {
-        comp.addNumber(exp);
-    }
+        // Create and use the Facade (Composite + Factory)
+        CalculatorFacade facade = new CalculatorFacade();
 
-    // add all operations to CompositeOperation object
-    for (String op : operationsList) {
-        comp.addOperation(op);
-    }
+        float result = 0;
+        try {
+            result = facade.calculate(expressionList, operationsList);
+        } catch (ArithmeticException ex) {
+            clear();
+            currentOperand = "Error";
+            updateDisplay();
+            return;
+        } catch (Exception ex) {
+            clear();
+            currentOperand = "Error";
+            updateDisplay();
+            return;
+        }
 
-    // compute
-    float result = 0;
-    try {
-        result = comp.evaluate();
-    } catch (ArithmeticException ex) {
-        clear();
-        currentOperand = "Error";
+        currentOperand = (result - (int) result != 0)
+                ? Float.toString(result)
+                : Integer.toString((int) result);
+
+        expressionList.clear();
+        operationsList.clear();
+        expressionText = currentOperand;
+
         updateDisplay();
-        return;
-    }
-
-    currentOperand = (result - (int) result != 0) ? Float.toString(result) : Integer.toString((int) result);
-
-    expressionList.clear();
-    operationsList.clear();
-    expressionText = currentOperand;
-    updateDisplay();
     }
 
     public void updateDisplay() {
-        previous.setText(expressionText);  
-        current.setText(currentOperand); 
+        previous.setText(expressionText);
+        current.setText(currentOperand);
     }
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
@@ -577,10 +652,7 @@ public final class Calculator extends javax.swing.JFrame {
     }//GEN-LAST:event_btnClearActionPerformed
 
     private void btnDelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnDelActionPerformed
-        if (!this.currentOperand.equals("")) {
-            this.currentOperand = this.currentOperand.substring(0, this.currentOperand.length() - 1);
-            this.updateDisplay();
-        }
+        undo();
     }//GEN-LAST:event_btnDelActionPerformed
 
     private void btnPlusActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnPlusActionPerformed
