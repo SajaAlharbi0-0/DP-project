@@ -39,7 +39,7 @@ public final class Calculator extends javax.swing.JFrame {
         return instance;
     }
 
-    // ====================MEMENTO  ====================
+    // ===================  MEMENTO  ====================
 
     // [Memento] snapshot class (inner private class)
     private static class CalculatorMemento {
