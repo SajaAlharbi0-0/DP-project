@@ -48,41 +48,18 @@ class CompositeOperation implements Expression {
     }
 
     @Override
-    public float evaluate() {
-        if (numbers.isEmpty()) {
-            return 0;
-        }
-        if (numbers.size() == 1) {
-            return numbers.get(0).evaluate();
-        }
-
-        // copy list to avoid change it
+      public float evaluate() {
+        // Clone to avoid modifying original lists
         List<Expression> nums = new ArrayList<>(numbers);
         List<String> ops = new ArrayList<>(operationsList);
 
-        // Start with multiplication and division
-        for (int i = 0; i < ops.size(); i++) {
-            String op = ops.get(i);
-            if (op.equals("×") || op.equals("÷")) {
-                float left = nums.get(i).evaluate();
-                float right = nums.get(i + 1).evaluate();
-                float res = CalculatorFactory.create(op).apply(left, right); // use factory 
+        // Setup Chain
+        OperationHandler mulDiv = new MulDivHandler();
+        OperationHandler addSub = new AddSubHandler();
+        mulDiv.setNext(addSub);
 
-                nums.set(i, new Number(res));
-                nums.remove(i + 1);
-                ops.remove(i);
-                i--; 
-            }
-        }
+        mulDiv.handle(nums, ops); // start chain
 
-        // Then perform the addition and subtraction.
-        float result = nums.get(0).evaluate();
-        for (int i = 0; i < ops.size(); i++) {
-            String op = ops.get(i);
-            float right = nums.get(i + 1).evaluate();
-            result = CalculatorFactory.create(op).apply(result, right); // use factory 
-        }
-        
-        return result;
-    }
+        return nums.get(0).evaluate();
+      }
 }
