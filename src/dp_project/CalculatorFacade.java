@@ -16,7 +16,7 @@ import java.util.ArrayDeque;
 
 public class CalculatorFacade {
 
-    // [Memento] history stack – Caretaker
+    // [Memento] history stack – Caretaker..
     private final Deque<CalculatorMemento> history = new ArrayDeque<>();
 
     // [Memento]

@@ -8,9 +8,9 @@ import javax.swing.JButton;
 
 public final class Calculator extends javax.swing.JFrame {
 
-    // Singleton
+    // Singleton..
     private static Calculator instance = null;
-
+//,,
     // Current state
     private String currentOperand;
     private List<Expression> expressionList = new ArrayList<>(); // numbers for CompositeOperation
