@@ -8,10 +8,46 @@ package dp_project;
  *
  * @author jood2
  */
-import java.util.List;
 
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.ArrayDeque;
 
 public class CalculatorFacade {
+
+    // [Memento] history stack – Caretaker
+    private final Deque<CalculatorMemento> history = new ArrayDeque<>();
+
+    // [Memento]
+
+    public void saveState(String currentOperand,
+                          List<Expression> expressionList,
+                          List<String> operationsList,
+                          String expressionText) {
+
+        CalculatorMemento m = new CalculatorMemento(
+                currentOperand,
+                new ArrayList<>(expressionList),    //copy
+                new ArrayList<>(operationsList),
+                expressionText
+        );
+        history.push(m);
+    }
+
+    public Object[] undo() {
+        if (history.isEmpty()) return null;
+
+        CalculatorMemento m = history.pop();
+
+        return new Object[] {
+                m.getCurrentOperand(),
+                m.getExpressionList(),
+                m.getOperationsList(),
+                m.getExpressionText()
+        };
+    }
+
 
     // The Facade interacts with the Composite and Factory subsystems.
     public float calculate(List<Expression> expressionList, List<String> operationsList) {
@@ -33,3 +69,4 @@ public class CalculatorFacade {
         return comp.evaluate();
     }
 }
+

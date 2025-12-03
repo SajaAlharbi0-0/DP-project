@@ -4,8 +4,6 @@ import java.awt.Color;
 import java.awt.event.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Deque;        // [Memento] 
-import java.util.ArrayDeque;  // [Memento] 
 import javax.swing.JButton;
 
 public final class Calculator extends javax.swing.JFrame {
@@ -19,8 +17,8 @@ public final class Calculator extends javax.swing.JFrame {
     private List<String> operationsList = new ArrayList<>();     // operations for CompositeOperation
     private String expressionText = "";                          // text shown to user
 
-    // [Memento] stack to support multi-level undo
-    private Deque<CalculatorMemento> undoStack = new ArrayDeque<>();
+    // [Facade](Memnto,Calculator)
+    private final CalculatorFacade facade = new CalculatorFacade();
 
     private int x, y;
 
@@ -39,58 +37,23 @@ public final class Calculator extends javax.swing.JFrame {
         return instance;
     }
 
-    // ===================  MEMENTO  ====================
-
-    // [Memento] snapshot class (inner private class)
-    private static class CalculatorMemento {
-        private final String currentOperand;
-        private final List<Expression> expressionList;
-        private final List<String> operationsList;
-        private final String expressionText;
-
-        private CalculatorMemento(String currentOperand,
-                                  List<Expression> expressionList,
-                                  List<String> operationsList,
-                                  String expressionText) {
-            this.currentOperand = currentOperand;
-            this.expressionList = expressionList;
-            this.operationsList = operationsList;
-            this.expressionText = expressionText;
-        }
-    }
-
-    // [Memento] create snapshot of current state
-    private CalculatorMemento createMemento() {
-        return new CalculatorMemento(
-                currentOperand,
-                new ArrayList<>(expressionList),   // copy lists
-                new ArrayList<>(operationsList),
-                expressionText
-        );
-    }
-
-    // [Memento] push snapshot to history
+    //   MEMENTO Through FACADE 
     private void saveStateToHistory() {
-        undoStack.push(createMemento());
+        facade.saveState(currentOperand, expressionList, operationsList, expressionText);
     }
 
-    // [Memento] restore from snapshot
-    private void restoreFromMemento(CalculatorMemento m) {
-        if (m == null) return;
-        this.currentOperand = m.currentOperand;
-        this.expressionList = new ArrayList<>(m.expressionList);
-        this.operationsList = new ArrayList<>(m.operationsList);
-        this.expressionText = m.expressionText;
-        updateDisplay();
-    }
-
-    // [Memento] undo last step (used by ← button)
     private void undo() {
-        if (!undoStack.isEmpty()) {
-            CalculatorMemento m = undoStack.pop();
-            restoreFromMemento(m);
-        }
-    }
+    Object[] state = facade.undo();
+    if (state == null) return;
+
+    this.currentOperand = (String) state[0];
+    this.expressionList = new ArrayList<>((List<Expression>) state[1]);
+    this.operationsList = new ArrayList<>((List<String>) state[2]);
+    this.expressionText = (String) state[3];
+
+    updateDisplay();
+}
+
 
     // ===================== EVENTS & LOGIC =======================
 
@@ -128,7 +91,7 @@ public final class Calculator extends javax.swing.JFrame {
     }
 
     public void clear() {
-        // [Memento] save state before clearing
+        // [Memento] save state before clearing 
         saveStateToHistory();
 
         this.currentOperand = "";
@@ -179,11 +142,9 @@ public final class Calculator extends javax.swing.JFrame {
 
         expressionList.add(new Number(Float.parseFloat(currentOperand)));
 
-        // Create and use the Facade (Composite + Factory)
-        CalculatorFacade facade = new CalculatorFacade();
-
         float result = 0;
         try {
+            // نستخدم نفس الـ Facade (اللي يدير الميمينتو كمان)
             result = facade.calculate(expressionList, operationsList);
         } catch (ArithmeticException ex) {
             clear();
