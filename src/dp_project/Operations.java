@@ -6,7 +6,7 @@ package dp_project;
 
 /**
  *
- * @author jood2
+ * @author 
  */
 
 final class AddOperation implements CalculatorOperation {
